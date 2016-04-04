@@ -3,7 +3,17 @@ package com.uncle.newshanxun;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.json.JSONObject;
+import org.kymjs.kjframe.KJActivity;
+import org.kymjs.kjframe.KJHttp;
+import org.kymjs.kjframe.http.HttpCallBack;
+import org.kymjs.kjframe.http.HttpConfig;
+import org.kymjs.kjframe.http.HttpParams;
+import org.kymjs.kjframe.utils.PreferenceHelper;
+
+import com.socks.library.KLog;
 import com.uncle.newshanxun.R;
+import com.uncle.newshanxun.constants.AppConstants;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -20,7 +30,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import cn.jpush.android.api.JPushInterface;
 
 
 public class MainActivity extends Activity implements OnClickListener {
@@ -103,18 +112,14 @@ public class MainActivity extends Activity implements OnClickListener {
 		String r = sharedPre.getString("router", "admin");
 		root.setText(r.toCharArray(), 0, r.length());
 		
-		JPushInterface.setDebugMode(false);
-		JPushInterface.init(this);
 	}
 
 	@Override
 	protected void onResume() {
-		JPushInterface.onResume(this);
 		super.onResume();
 	}
 	@Override
 	protected void onPause() {
-		JPushInterface.onPause(this);
 		super.onPause();
 	}
 	@Override
@@ -273,7 +278,7 @@ public class MainActivity extends Activity implements OnClickListener {
 		if (v.getId() == R.id.guanyu) {
 			Toast.makeText(MainActivity.this, new_user , Toast.LENGTH_SHORT).show(); 
 			Intent aboutIntent = new Intent();
-			aboutIntent.putExtra("username", new_user);
+			//aboutIntent.putExtra("username", new_user);
 			aboutIntent.setClass(MainActivity.this, AboutUs.class);
 			startActivity(aboutIntent);
 		}
@@ -356,10 +361,6 @@ public class MainActivity extends Activity implements OnClickListener {
 					Toast.LENGTH_SHORT).show();
 			return;
 		}
-		// else if(usetag.equals("false")){
-		// Toast.makeText(getApplicationContext(),"不需要重复初始化",
-		// Toast.LENGTH_SHORT).show();
-		// }
 		try {
 			String line = "";
 			String url = "http://newdial.sinaapp.com/2015/sx_getpin.php";
@@ -420,4 +421,27 @@ public class MainActivity extends Activity implements OnClickListener {
 		}
 		
 	};
+	
+	
+	public void test() {
+		PreferenceHelper.write(this, AppConstants.PreferenceFileName, "", "");
+
+		HttpConfig hc = new HttpConfig();
+		hc.cacheTime = 0;
+		KJHttp kjh = new KJHttp(hc);
+		HttpParams params = new HttpParams();
+	    params.putHeaders("Cookie", "cookie不能告诉你");
+		kjh.get("https://www.v2ex.com/api/topics/hot.json", new HttpCallBack() {
+			@Override
+			public void onSuccess(String t) {
+				super.onSuccess(t);
+				KLog.json(t);
+			}
+			@Override
+			public void onFailure(int errorNo, String strMsg) {
+				super.onFailure(errorNo, strMsg);
+			}
+		});
+	}
+
 }

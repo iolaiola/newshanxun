@@ -208,17 +208,6 @@ public class UDPClient extends Service {
         			stopSelf();
         		}
             }
-            /*else if (action.equals(Intent.ACTION_TIME_TICK)) {
-				Log.d("TIMER", clock + " minite passed");
-				if (clock == 0) {
-					errornum = 0;
-					heart();
-					clock++;
-				} else {
-					clock++;
-					clock = clock % 3;
-				}
-			}*/
         }
     };  
     

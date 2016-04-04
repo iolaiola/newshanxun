@@ -32,35 +32,43 @@
             android:id="@+id/textView3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="版  本  号： 2.1.2（渠道支付版）"
+            android:text="版  本  号： 2.1.2"
             android:textSize="20sp" />
+        <TextView
+            android:id="@+id/blank"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" "
+            android:textSize="20sp" />
+        
+
     </LinearLayout>
 
-    <Button
-        android:id="@+id/buttononemonth"
+    <LinearLayout
+        android:id="@+id/linearLayout2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/linearLayout1"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="56dp"
-        android:text="支付一个月（8元）" />
-
-    <Button
-        android:id="@+id/submit"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/buttononemonth"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="59dp"
-        android:text="支付半年（30元）" />
-
-    <Button
-        android:id="@+id/update"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/submit"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="62dp"
-        android:text="失败补发" />
-
+        android:layout_marginTop="25dp"
+        android:layout_below="@id/linearLayout1"
+        android:orientation="vertical" >
+        
+        <TextView
+            android:id="@+id/news"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="正在加载中"
+            android:textSize="20sp" />
+        
+        <Button
+            android:id="@+id/newsUpdate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_gravity="center"
+            android:padding="10dp"
+            android:text="更新新闻" />
+        
+</LinearLayout>
 </RelativeLayout>
