@@ -4,12 +4,19 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
+import org.kymjs.kjframe.KJHttp;
+import org.kymjs.kjframe.http.HttpCallBack;
+import org.kymjs.kjframe.http.HttpConfig;
+import org.kymjs.kjframe.http.HttpParams;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -26,44 +33,34 @@ import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.socks.library.KLog;
 import com.uncle.newshanxun.R;
+import com.uncle.newshanxun.bean.myMessage;
+import com.uncle.newshanxun.constants.AppConstants;
+import com.uncle.newshanxun.constants.URLConstants;
 
 public class UDPClient extends Service {
-	public final String ACTION_NAME = "HeartBeat";
 	public static String username = null;
 	public static String message = "default";
 	public static String heartUrl = null;
 	private static String send = "";
 	private static int errornum = 0;
 	public static Context mContext = null;
-	
 	private Timer timer = new Timer();
 	private TimerTask task;
 	
-	public IBinder onBind(Intent intent) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
+	private static boolean OnOff = false;
+	
 	public static void initContext(Context mc){
 		mContext = mc;
 	}
 	
-	
-	public void onCreate() {
-
+	public static void setOnOff(boolean k){
+		OnOff = k;
 	}
 	
-	public void onStop(){
-		
-	}
-	
-	public void onDestroy(){
-		stopForeground(true);
-	}
-	
+	@Override
 	public void onStart(Intent intent, int startId) {
-		registerBoradcastReceiver();
 		String[] info = intent.getStringExtra("info").split(" ");
 		username = info[0];
 		heartUrl = info[1];
@@ -75,12 +72,14 @@ public class UDPClient extends Service {
 		task = new TimerTask() {
 			@Override
 			public void run() {
+				if(!OnOff)
+					stopSelf();
 				Message message = mHandler.obtainMessage();
 				message.what = 789;
 				mHandler.sendMessage(message);
 			}
 		};
-		timer.schedule(task, 0, 3*1000*60);
+		timer.schedule(task, 0, 3*1000);
 	}
 	private final Handler mHandler = new Handler(){
 		@Override
@@ -90,50 +89,67 @@ public class UDPClient extends Service {
 				errornum = 0;
 				Log.d("timer","this is from timer heart();");
 				heart();
-				//String str1 = msg.getData().getString("toast");//接受msg传递过来的参数   
 				break;
 			default:
 				break;
 			}
 		}
 	};
-	public void heart(){
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				if (Tools.isWifiConnected(mContext)) {
+
+	public void heart() {
+		if (!Tools.isWifiConnected(mContext)) {
+			SimpleDateFormat formatter = new SimpleDateFormat ("MM月dd日 HH:mm:ss ");
+			Date curDate = new Date(System.currentTimeMillis());//获取当前时间
+			String dateStr = formatter.format(curDate);
+			myMessage me = new myMessage();
+			me.setType(myMessage.TYPE_DIALOG);
+			me.setMess(dateStr + ":WIFI连接已断开");
+			EventBus.getDefault().post(me);
+		} else {
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
 					try {
-						send = getNewHeart();
-						if(!send.equals(""))
-							sendUdp(send);
-					} catch (Exception e) {}
+						getNewHeart();
+					} catch (Exception e) {
+					}
 				}
-			}
-		}).start();
+			}).start();
+			
+		}
 	}
 	
-	public String getNewHeart(){
-		Map<String, String> paramValues = new HashMap<String, String>();  
-        paramValues.put("message", message);
-        //heartUrl="http://newdial.sinaapp.com/httest.php";
-        String url=heartUrl+"?user="+username+"&version="+Tools.getVersionName(mContext);
-        String postReturn = Tools.sendPost(url, Tools.getParams(true, paramValues));
-        String mess="";
-		try {
-			JSONObject jo = new JSONObject(postReturn);
-			int state = jo.getInt("state");
-			mess = jo.getString("message");
-			Log.d("getNewHeart()", mess);
-			if(state == 0)
-				return mess;
-			Intent mIntent = new Intent("HeartBeat");
-			mIntent.putExtra("bool",false);
-			sendBroadcast(mIntent);
-			return "";
-		} catch (Exception e) {}
-		return "";
+	public void getNewHeart(){
+		String url=heartUrl+"?user="+username+"&version="+Tools.getVersionName(mContext);
+		HttpConfig hc = new HttpConfig();
+		hc.cacheTime = 0;
+		KJHttp kjh = new KJHttp(hc);
+		HttpParams params = new HttpParams();
+	    params.put("message", message);
+	    kjh.get(url , params , new HttpCallBack() {
+			@Override
+			public void onSuccess(String t) {
+				super.onSuccess(t);
+				KLog.json(t);
+				try {
+					JSONObject jo = new JSONObject(t);
+					int state = jo.getInt("state");
+					String mess = jo.getString("message");
+					Log.d("getNewHeart()", mess);
+					if(state == 0){
+						send = mess;
+						sendUdp(send);
+					}
+				} catch (Exception e) {}
+			}
+			@Override
+			public void onFailure(int errorNo, String strMsg) {
+				super.onFailure(errorNo, strMsg);
+				KLog.e(String.valueOf(errorNo), strMsg);
+			}
+		});
 	}
-
+	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		// TODO Auto-generated method stub
 		Log.v("TrafficService", "startCommand");
@@ -141,7 +157,7 @@ public class UDPClient extends Service {
 		PendingIntent pendingIntent= PendingIntent.getActivity(this, 1, new Intent(), Notification.FLAG_FOREGROUND_SERVICE);
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 		Notification.Builder mBuilder = new Notification.Builder(this);
-		mBuilder.setContentTitle("newsx2.1.2");
+		mBuilder.setContentTitle("Router_uncle");
 		mBuilder.setContentIntent(pendingIntent);
 		mBuilder.setContentText("请保持后台运行！");
 		mBuilder.setTicker("请保持后台运行！");
@@ -149,7 +165,6 @@ public class UDPClient extends Service {
 		mBuilder.setPriority(Notification.PRIORITY_HIGH);
 		mBuilder.setOngoing(true);
 		mBuilder.setSmallIcon(R.drawable.ic);
-		//mBuilder.setAutoCancel(true);
 		Notification nf=mBuilder.build();
 		nf.flags=Notification.FLAG_ONGOING_EVENT;
 		
@@ -160,10 +175,10 @@ public class UDPClient extends Service {
 		flags = START_REDELIVER_INTENT;//重传Intent。使用这个返回值时，如果在执行完onStartCommand后，
 		//服务被异常kill掉，系统会自动重启该服务，并将Intent的值传入。
 		return super.onStartCommand(intent, flags, startId);
-		// return START_REDELIVER_INTENT;
 	}
 
 	public int sendUdp(String mes) throws SocketException{
+		KLog.d("sendUdp(String mes)");
 		DatagramSocket s = new DatagramSocket();
 		if(errornum > 5)
 			return -1;
@@ -171,7 +186,6 @@ public class UDPClient extends Service {
 			String m = mes;
 			byte[] sendBuf = Tools.hexStr2Bytes(m);
 			int server_port = 8080;
-			//Log.d("sendUdp", m);
 			s.setSoTimeout(5000);
 			InetAddress local = InetAddress.getByName("115.239.134.167");
 			int msg_length = sendBuf.length;
@@ -194,28 +208,11 @@ public class UDPClient extends Service {
 			return sendUdp(send);
 		}
 	}
-	
-	
-	private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver(){  
-        @Override  
-        public void onReceive(Context context, Intent intent) {  
-            String action = intent.getAction();
-            if(action.equals(ACTION_NAME)){
-            	boolean ht = intent.getBooleanExtra("bool", true);
-        		if(!ht){
-        			unregisterReceiver(mBroadcastReceiver);
-        			timer.cancel();
-        			stopSelf();
-        		}
-            }
-        }
-    };  
-    
-    public void registerBoradcastReceiver(){
-        IntentFilter myIntentFilter = new IntentFilter();
-        myIntentFilter.addAction(ACTION_NAME);
-        //myIntentFilter.addAction(Intent.ACTION_TIME_TICK);
-        //注册广播        
-        registerReceiver(mBroadcastReceiver, myIntentFilter);  
-    }
+
+	@Override
+	public IBinder onBind(Intent arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

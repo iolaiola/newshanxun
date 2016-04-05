@@ -29,7 +29,7 @@ public class AboutUs extends Activity implements OnClickListener{
 		setContentView(R.layout.about_us);
 		tvNews = (TextView) findViewById(R.id.news);
 		btnUpdate = (Button) findViewById(R.id.newsUpdate);
-		KLog.d("ssss");
+		btnUpdate.setOnClickListener(this);
 		NewsUpdate();
 	}
 
@@ -42,13 +42,13 @@ public class AboutUs extends Activity implements OnClickListener{
 	}
 	
 	private void NewsUpdate(){
+		
+		tvNews.setText("正在加载中。。。");
 		HttpConfig hc = new HttpConfig();
 		hc.cacheTime = 0;
 		KJHttp kjh = new KJHttp(hc);
 		HttpParams params = new HttpParams();
-		KLog.d("11111111s");
-	    params.put("user", PreferenceHelper.readString(this, AppConstants.PreferenceFileName, AppConstants.PreferenceSX_user,"unknown"));
-	    KLog.d("s222222");
+	    params.put("user", Tools.PrefGetStr(this, AppConstants.K_EDITUSER));
 	    kjh.get(URLConstants.URL_news , params , new HttpCallBack() {
 			@Override
 			public void onSuccess(String t) {

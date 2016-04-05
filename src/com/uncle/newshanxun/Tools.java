@@ -1,20 +1,16 @@
 package com.uncle.newshanxun;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import org.greenrobot.eventbus.EventBus;
+import org.kymjs.kjframe.KJHttp;
+import org.kymjs.kjframe.http.HttpCallBack;
+import org.kymjs.kjframe.http.HttpConfig;
+import org.kymjs.kjframe.http.HttpParams;
+import org.kymjs.kjframe.utils.PreferenceHelper;
+
+import com.socks.library.KLog;
+import com.uncle.newshanxun.bean.myMessage;
+import com.uncle.newshanxun.constants.AppConstants;
+import com.uncle.newshanxun.constants.URLConstants;
 
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
@@ -23,129 +19,58 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.util.Log;
 
 public class Tools {
-	public static String HttpGet(String urlString) throws Exception{
-		URL url = new URL(urlString);
-		String line = null;
-		HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-		urlConnection.setReadTimeout(5000);
-		urlConnection.setRequestMethod("GET");
-		if (urlConnection.getResponseCode() == 200) {
-			InputStream inStream = urlConnection.getInputStream();
-			byte[] data = Tools.read(inStream);
-			line = new String(data);
-		}
-		Log.d("HTTP_GET",line);
-		return line;
+	public static String PrefGetStr(Context con,String key){
+		return PreferenceHelper.readString(con, AppConstants.PreferenceFileName, key ,"");
+	}
+	public static boolean PrefGetBool(Context con,String key){
+		return PreferenceHelper.readBoolean(con, AppConstants.PreferenceFileName, key, false);
+	}
+	public static void PrefSetStr(Context con,String key,Object v){
+		String type = v.getClass().getName();
+		if(type.contains("Int"))
+			PreferenceHelper.write(con, AppConstants.PreferenceFileName, key, Integer.parseInt(v.toString()));
+		else if(type.contains("String"))
+			PreferenceHelper.write(con, AppConstants.PreferenceFileName, key, v.toString());
+		else if(type.contains("Bool"))
+			PreferenceHelper.write(con, AppConstants.PreferenceFileName, key, Boolean.parseBoolean(v.toString()));
 	}
 	
-	public static String getMD5(String str) throws Exception {
-		/** 创建MD5加密对象 */
-		MessageDigest md5 = MessageDigest.getInstance("MD5");
-		/** 进行加密 */
-		md5.update(str.getBytes());
-		/** 获取加密后的字节数组 */
-		byte[] md5Bytes = md5.digest();
-		String res = "";
-		for (int i = 0; i < md5Bytes.length; i++) {
-			int temp = md5Bytes[i] & 0xFF;
-			if (temp <= 0XF) { // 转化成十六进制不够两位，前面加零
-				res += "0";
+	public static void getIP(){
+		String visitUrl = "http://ip.6655.com/ip.aspx?area=1";
+		HttpConfig hc = new HttpConfig();
+		hc.cacheTime = 0;
+		KJHttp kjh = new KJHttp(hc);
+	    kjh.get(visitUrl , new HttpCallBack() {
+			@Override
+			public void onSuccess(String t) {
+				super.onSuccess(t);
+				KLog.d(t);
+				myMessage me = new myMessage();
+				me.setType(myMessage.TYPE_TOAST);
+				me.setMess(t);
+				EventBus.getDefault().post(me);
 			}
-			res += Integer.toHexString(temp);
-		}
-		return res;
+			@Override
+			public void onFailure(int errorNo, String strMsg) {
+				super.onFailure(errorNo, strMsg);
+				KLog.e(String.valueOf(errorNo), strMsg);
+				myMessage me = new myMessage();
+				me.setType(myMessage.TYPE_TOAST);
+				me.setMess("获取IP失败\n" + strMsg);
+				EventBus.getDefault().post(me);
+			}
+		});
 	}
-	public static String getString(byte[] b){  
-        StringBuffer sb = new StringBuffer();  
-         for(int i = 0; i < b.length; i ++){  
-          sb.append(b[i]);  
-         }  
-         return sb.toString();  
-	}  
 	
-	/**
-     * 向指定 URL 发送POST方法的请求
-     * @param url
-     *            发送请求的 URL
-     * @param param
-     *            请求参数，请求参数应该是 name1=value1&name2=value2 的形式。
-     * @return 所代表远程资源的响应结果
-     */
-    public static String sendPost(String url, String param) {
-        PrintWriter out = null;
-        BufferedReader in = null;
-        String result = "";
-        try {
-            URL realUrl = new URL(url);
-            URLConnection conn = realUrl.openConnection();
-            conn.setRequestProperty("accept", "*/*");
-            conn.setRequestProperty("connection", "Keep-Alive");
-            conn.setRequestProperty("user-agent",
-                    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)");
-            // 发送POST请求必须设置如下两行
-            conn.setDoOutput(true);
-            conn.setDoInput(true);
-            // 获取URLConnection对象对应的输出流
-            out = new PrintWriter(conn.getOutputStream());
-            // 发送请求参数
-            out.print(param);
-            // flush输出流的缓冲
-            out.flush();
-            // 定义BufferedReader输入流来读取URL的响应
-            in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String line;
-            while ((line = in.readLine()) != null) {
-                result += line;
-            }
-        } catch (Exception e) {
-            System.out.println("发送 POST 请求出现异常！"+e);
-            e.printStackTrace();
-        }
-        finally{
-            try{
-                if(out!=null){
-                    out.close();
-                }
-                if(in!=null){
-                    in.close();
-                }
-            }
-            catch(IOException ex){
-                ex.printStackTrace();
-            }
-        }
-        return result;
-    }
-	
-    
-    public static String getParams(boolean isPost,Map<String, String> paramValues)  
-    {  
-        String params="";
-        Set<String> key = paramValues.keySet();  
-        String beginLetter="";  
-        if (!isPost){  
-            beginLetter="?";  
-        }  
-        for (Iterator<String> it = key.iterator(); it.hasNext();) {  
-            String s = (String) it.next();
-            if (params.equals("")){
-                params += beginLetter + s + "=" + paramValues.get(s);  
-            }
-            else{
-                params += "&" + s + "=" + paramValues.get(s);
-            }
-        }
-        return params;
-    }
-	
+	/*
+	 * sanxun need
+	 */
 	public static String bin2hex(String bin) {
 		char[] digital = "0123456789ABCDEF".toCharArray();
 		StringBuffer sb = new StringBuffer("");
 		byte[] bs = bin.getBytes();
-
 		for (int i = 0; i < bs.length; i++) {
 			sb.append('%');
 			int bit = (bs[i] & 0xF0) >> 4;
@@ -156,37 +81,20 @@ public class Tools {
 		return sb.toString();
 	}
 	
-	public static boolean isWifiConnected(Context context)
-    {
+	public static boolean isWifiConnected(Context context){
 		context.getApplicationContext();
         ConnectivityManager connectivityManager = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo wifiNetworkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-        if(wifiNetworkInfo.isConnected())
-        {
-            return true ;
+        if(wifiNetworkInfo.isConnected()){
+            return true;
         }
-        return false ;
+        return false;
     }
-	
-	
-	public static byte[] read(InputStream inStream)throws Exception{
-		ByteArrayOutputStream outp=new ByteArrayOutputStream();
-		byte[] buffer= new byte[1024];
-		int len=0;
-		while((len=inStream.read(buffer))!=-1)
-		{
-			outp.write(buffer,0,len);
-			
-		}
-		inStream.close();
-		return outp.toByteArray();
-	}
 	
 	public static boolean isMyServiceRunning(Context context,String packegename) {
 	    ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
 	    for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
 	        if (packegename.equals(service.service.getClassName())) {
-	        	//"com.example.newshanxun.HeartGuard"
 	            return true;
 	        }
 	    }
@@ -227,28 +135,26 @@ public class Tools {
 		return ret;
 	}
 
-	public static String origin(byte[] from) {
-		String a = null;
-		StringBuilder aa = new StringBuilder();
-		for (int i = 0; i < from.length; i++) {
-			aa.append(from[0]);
-		}
-		a = aa.toString();
-		return a;
-	}
+//	public static String origin(byte[] from) {
+//		String a = null;
+//		StringBuilder aa = new StringBuilder();
+//		for (int i = 0; i < from.length; i++) {
+//			aa.append(from[0]);
+//		}
+//		a = aa.toString();
+//		return a;
+//	}
 	
 	
-	public static String getVersionName(Context context){
-		// 获取packagemanager的实例
-		try{
-		PackageManager packageManager = context.getPackageManager();
-		// getPackageName()是你当前类的包名，0代表是获取版本信息
-		PackageInfo packInfo = packageManager.getPackageInfo(context.getPackageName(),0);
-		String version = packInfo.versionName;
-		Log.d("version",version);
-		return version;
-		}
-		catch(Exception e){
+	public static String getVersionName(Context context) {
+		try {
+			PackageManager packageManager = context.getPackageManager();
+			// getPackageName()是你当前类的包名，0代表是获取版本信息
+			PackageInfo packInfo = packageManager.getPackageInfo(
+					context.getPackageName(), 0);
+			String version = packInfo.versionName;
+			return version;
+		} catch (Exception e) {
 			return "";
 		}
 	}
