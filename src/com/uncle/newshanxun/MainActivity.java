@@ -279,6 +279,12 @@ public class MainActivity extends Activity implements OnClickListener {
 						me.setMess("初始化成功");
 						EventBus.getDefault().post(me);
 					}
+					else{
+						myMessage me = new myMessage();
+						me.setType(myMessage.TYPE_DIALOG);
+						me.setMess(jo.getString("message"));
+						EventBus.getDefault().post(me);
+					}
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
